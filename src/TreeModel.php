@@ -244,14 +244,15 @@ trait TreeModel{
      * 查询所子节点
      * 返回: \Illuminate\Support\Collection
      */
-    public function childs(){
+    public function childs($self = false){
         $left = $this->getAttribute($this->treeField['left_key']);
         $right = $this->getAttribute($this->treeField['right_key']);
+        $self AND $self = '=';
         //没有边界,或没有子节点
-        if((!$left && !$right) || ($left+1==$right)){
+        if(((!$left && !$right) || ($left+1==$right)) && !$self){
             return collect([]);
         }
-        return self::where($this->treeField['left_key'],'>',$left)->where($this->treeField['right_key'],'<',$right)->orderBy($this->treeField['left_key'])->get();
+        return self::where($this->treeField['left_key'],'>'.$self,$left)->where($this->treeField['right_key'],'<'.$self,$right)->orderBy($this->treeField['left_key'])->get();
     }
 
     /**
