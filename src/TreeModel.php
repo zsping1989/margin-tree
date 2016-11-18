@@ -252,7 +252,10 @@ trait TreeModel{
         if(((!$left && !$right) || ($left+1==$right)) && !$self){
             return collect([]);
         }
-        return self::where($this->treeField['left_key'],'>'.$self,$left)->where($this->treeField['right_key'],'<'.$self,$right)->orderBy($this->treeField['left_key'])->get();
+        return self::where($this->treeField['left_key'],'>'.$self,$left)
+            ->where($this->treeField['right_key'],'<'.$self,$right)
+            ->orderBy($this->treeField['left_key'])
+            ->get();
     }
 
     /**
@@ -268,6 +271,16 @@ trait TreeModel{
             ->where($this->treeField['right_key'],'>'.$self,$right)
             ->orderBy($this->treeField['left_key'])
             ->get();
+    }
+
+    public function parent($level=false){
+        $left = $this->getAttribute($this->treeField['left_key']);
+        $right = $this->getAttribute($this->treeField['right_key']);
+        !$level AND $level = $this[$this->treeField['level_key']]-1;
+        return self::where($this->treeField['left_key'],'<',$left)
+            ->where($this->treeField['right_key'],'>',$right)
+            ->where($this->treeField['level_key'],'=',$level)
+            ->first();
     }
 
 
