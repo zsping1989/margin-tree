@@ -273,16 +273,6 @@ trait TreeModel{
             ->get();
     }
 
-    public function parent($level=false){
-        $left = $this->getAttribute($this->treeField['left_key']);
-        $right = $this->getAttribute($this->treeField['right_key']);
-        !$level AND $level = $this[$this->treeField['level_key']]-1;
-        return self::where($this->treeField['left_key'],'<',$left)
-            ->where($this->treeField['right_key'],'>',$right)
-            ->where($this->treeField['level_key'],'=',$level)
-            ->first();
-    }
-
 
     public function moveNear($id,$position = 'before'){
         //初始化配置
@@ -304,7 +294,10 @@ trait TreeModel{
     }
 
 
-
+    /* 父级节点 */
+    public function parent(){
+        return $this->hasOne(get_class($this),$this->getKeyName(),$this->treeField['parent_key']);
+    }
 
 
 
