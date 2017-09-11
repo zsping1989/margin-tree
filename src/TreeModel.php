@@ -98,82 +98,52 @@ trait TreeModel{
 
 
     /**
-     * 重写更新数据
      * Perform a model update operation.
      *
      * @param  \Illuminate\Database\Eloquent\Builder  $query
-     * @param  array  $options
      * @return bool
      */
-    protected function performUpdate(Builder $query, array $options = [])
+    protected function performUpdate(Builder $query)
     {
+        // If the updating event returns false, we will cancel the update operation so
+        // developers can hook Validation systems into their models and cancel this
+        // operation if the model does not pass validation. Otherwise, we update.
+        if ($this->fireModelEvent('updating') === false) {
+            return false;
+        }
+
+        // First we need to create a fresh query instance and touch the creation and
+        // update timestamp on the model which are maintained by us for developer
+        // convenience. Then we will just continue saving the model instances.
+        if ($this->usesTimestamps()) {
+            $this->updateTimestamps();
+        }
+
+        // Once we have run the update operation, we will fire the "updated" event for
+        // this model instance. This will allow developers to hook into these after
+        // models are updated, giving them a chance to do any special processing.
         $dirty = $this->getDirty();
 
         if (count($dirty) > 0) {
-            // If the updating event returns false, we will cancel the update operation so
-            // developers can hook Validation systems into their models and cancel this
-            // operation if the model does not pass validation. Otherwise, we update.
-            if ($this->fireModelEvent('updating') === false) {
-                return false;
+            //有修改父节点
+            if(isset($dirty[$this->treeField['parent_key']]) && $dirty[$this->treeField['parent_key']]){
+                //初始化配置
+                $this->treeInit(app('NestedSetsService'));
+                $this->nestend->moveUnder($this->getAttribute($this->getKeyName()),$dirty[$this->treeField['parent_key']]);
             }
-
-            // First we need to create a fresh query instance and touch the creation and
-            // update timestamp on the model which are maintained by us for developer
-            // convenience. Then we will just continue saving the model instances.
-            if ($this->timestamps && Arr::get($options, 'timestamps', true)) {
-                $this->updateTimestamps();
-            }
-
-            // Once we have run the update operation, we will fire the "updated" event for
-            // this model instance. This will allow developers to hook into these after
-            // models are updated, giving them a chance to do any special processing.
-            $dirty = $this->getDirty();
-
-            if (count($dirty) > 0) {
-                $move_result = true;
-
-                //有修改父节点
-                if(isset($dirty[$this->treeField['parent_key']]) && $dirty[$this->treeField['parent_key']]){
-                    //初始化配置
-                    $this->treeInit(app('NestedSetsService'));
-
-                    //开启事务,处理边界
-                    DB::beginTransaction();
-
-                    //进行移动
-                    $move_result = $this->nestend->moveUnder($this->getAttribute($this->getKeyName()),$dirty[$this->treeField['parent_key']]);
-
-                    //移动结果判断
-                    if($move_result===false){
-                        DB::rollback();
-                        return false;
-                    }
-                }
-
-                $numRows = $this->setKeysForSaveQuery($query)->update($dirty);
-
-                if($move_result && $numRows!==false){
-                    DB::commit();
-                }else{
-                    DB::rollback();
-                    return false;
-                }
-
-                $this->fireModelEvent('updated', false);
-            }
+            $this->setKeysForSaveQuery($query)->update($dirty);
+            $this->fireModelEvent('updated', false);
         }
 
         return true;
     }
 
-
     /**
-     * 重写删除方法
      * Delete the model from the database.
      *
-     * return bool|null
+     * @return bool|null
      *
-     * throws \Exception
+     * @throws \Exception
      */
     public function delete()
     {
@@ -181,30 +151,33 @@ trait TreeModel{
             throw new Exception('No primary key defined on model.');
         }
 
-        if ($this->exists) {
-            if ($this->fireModelEvent('deleting') === false) {
-                return false;
-            }
-
-            // Here, we'll touch the owning models, verifying these timestamps get updated
-            // for the models. This will allow any caching to get broken on the parents
-            // by the timestamp. Then we will go ahead and delete the model instance.
-            $this->touchOwners();
-
-            //删除子节点
-            $this->deleteChilds();
-
-            $this->performDeleteOnModel();
-
-            $this->exists = false;
-
-            // Once the model has been deleted, we will fire off the deleted event so that
-            // the developers may hook into post-delete operations. We will then return
-            // a boolean true as the delete is presumably successful on the database.
-            $this->fireModelEvent('deleted', false);
-
-            return true;
+        // If the model doesn't exist, there is nothing to delete so we'll just return
+        // immediately and not do anything else. Otherwise, we will continue with a
+        // deletion process on the model, firing the proper events, and so forth.
+        if (! $this->exists) {
+            return;
         }
+
+        if ($this->fireModelEvent('deleting') === false) {
+            return false;
+        }
+
+        // Here, we'll touch the owning models, verifying these timestamps get updated
+        // for the models. This will allow any caching to get broken on the parents
+        // by the timestamp. Then we will go ahead and delete the model instance.
+        $this->touchOwners();
+        //删除子节点
+        $this->deleteChilds();
+        $this->performDeleteOnModel();
+
+        $this->exists = false;
+
+        // Once the model has been deleted, we will fire off the deleted event so that
+        // the developers may hook into post-delete operations. We will then return
+        // a boolean true as the delete is presumably successful on the database.
+        $this->fireModelEvent('deleted', false);
+
+        return true;
     }
 
 
@@ -258,21 +231,23 @@ trait TreeModel{
             ->get();
     }
 
-    /**
-     * 查询所有父节点
-     * @param bool $self
-     * 返回: mixed
-     */
-    public function parents($self = false){
-        $left = $this->getAttribute($this->treeField['left_key']);
-        $right = $this->getAttribute($this->treeField['right_key']);
-        $self AND $self = '=';
-        return self::where($this->treeField['left_key'],'<'.$self,$left)
-            ->where($this->treeField['right_key'],'>'.$self,$right)
-            ->orderBy($this->treeField['left_key'])
-            ->get();
-    }
+    public function moveUnder($parent_id){
+        //初始化配置
+        $this->treeInit(app('NestedSetsService'));
 
+        //开启事务,处理边界
+        DB::beginTransaction();
+
+        //进行移动
+        $move_result = $this->nestend->moveUnder($this->getAttribute($this->getKeyName()), $parent_id,  'bottom');
+        //移动结果判断
+        if($move_result===false){
+            DB::rollback();
+            return false;
+        }
+        DB::commit();
+        return $move_result;
+    }
 
     public function moveNear($id,$position = 'before'){
         //初始化配置
@@ -296,7 +271,56 @@ trait TreeModel{
 
     /* 父级节点 */
     public function parent(){
-        return $this->hasOne(get_class($this),$this->getKeyName(),$this->treeField['parent_key']);
+        return $this->belongsTo(get_class($this),$this->treeField['parent_key'],$this->getKeyName());
+    }
+
+    /**
+     * 子节点
+     * @return mixed
+     */
+    public function childrens(){
+        return $this->hasMany(get_class($this),$this->treeField['parent_key'],$this->getKeyName());
+    }
+
+    /**
+     * 可选的父节点
+     */
+    public function scopeOptionalParent($q,$node=null){
+        if(!$node){
+            return $q;
+        }
+        $l_key = $this->treeField['left_key'];
+        $r_key = $this->treeField['right_key'];
+        $q->whereRaw(DB::Raw("!(`{$l_key}`>=".$node[$l_key]." AND `{$r_key}`<=".$node[$r_key].')'));
+        return $q;
+    }
+
+    /**
+     * 查询所有父节点
+     * @param bool $self
+     * 返回: mixed
+     */
+    public function scopeParents($q,$node,$self = null){
+        $left = $node[$this->treeField['left_key']];
+        $right = $node[$this->treeField['right_key']];
+        $self AND $self = '=';
+        return $q->where($this->treeField['left_key'],'<'.$self,$left)
+            ->where($this->treeField['right_key'],'>'.$self,$right);
+    }
+
+    /**
+     * 查询子节点
+     * @param $q
+     * @param $node
+     * @param null $self
+     * @return \Illuminate\Support\Collection
+     */
+    public function scopeChildren($q,$node,$self = null){
+        $left = $node[$this->treeField['left_key']];
+        $right = $node[$this->treeField['right_key']];
+        $self AND $self = '=';
+        return $q->where($this->treeField['left_key'],'>'.$self,$left)
+            ->where($this->treeField['right_key'],'<'.$self,$right);
     }
 
 

@@ -62,7 +62,7 @@ class DbMysqlImplModel  implements DbMysqlModel{
     public function query($sql,$args = array())
     {
         $all_sql = $this->buildSQL(func_get_args());
-        return DB::update($all_sql);
+        return DB::statement($all_sql);
     }
 
     /**
@@ -103,7 +103,8 @@ class DbMysqlImplModel  implements DbMysqlModel{
      */
     public function update($sql, $args = array())
     {
-        // TODO: Implement update() method.
+        $all_sql = $this->buildSQL(func_get_args());
+        return DB::update($all_sql);
     }
 
     /**
@@ -117,7 +118,8 @@ class DbMysqlImplModel  implements DbMysqlModel{
      */
     public function getAll($sql,  $args = array())
     {
-        // TODO: Implement getAll() method.
+        $all_sql = $this->buildSQL(func_get_args());
+        return DB::select($all_sql);
     }
 
     /**

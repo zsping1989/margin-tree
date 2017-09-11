@@ -228,7 +228,7 @@ class NestedSetsService {
 		}
 
 		// Update tree keys to create gap
-		$res = $this->Db->query(
+		$res = $this->Db->update(
 			'UPDATE ?T SET ?F = ?F + 2, ?F = IF(?F >= ?N, ?F + 2, ?F) WHERE ?F >= ?N',
 			$this->tableName,
 			$this->rightKey,
@@ -278,7 +278,7 @@ class NestedSetsService {
 		);
 
 		// Update keys for a displacement
-		$this->Db->query(
+		$this->Db->update(
 			'UPDATE ?T SET ?F = IF(?F > ?N, ?F - ?N, ?F), ?F = ?F - ?N WHERE ?F > ?N',
 			$this->tableName,
 
@@ -401,14 +401,13 @@ class NestedSetsService {
 		// Determine the displacement of the keys moving structure and level shifting
 		$skew_tree = $item[$this->rightKey] - $item[$this->leftKey] + 1;
 		$skew_level = $level - $item[$this->levelKey];
-
 		// move up on the tree
 		if ($item[$this->rightKey] < $near_key) {
 			// Determine the displacement of the keys for the tree
 			$skew_edit = $near_key - $item[$this->leftKey] + 1 - $skew_tree;
 
 			// move node and update tree
-			$this->Db->query('
+			$this->Db->update('
 				UPDATE ?T
 				SET
 					?F = IF(
@@ -492,7 +491,7 @@ class NestedSetsService {
 			$skew_edit = $near_key - $item[$this->leftKey] + 1;
 
 			// move node and update tree
-			$this->Db->query('
+			$this->Db->update('
 				UPDATE ?T
 				SET
 					?F = IF(
@@ -588,11 +587,7 @@ class NestedSetsService {
 	 * @return array item data
 	 */
 	private function getItem($id) {
-		if (!isset(self::$cache[$this->tableName][$id]) || !self::$cache[$this->tableName][$id]) {
-			self::$cache[$this->tableName][$id] = $this->Db->getRow('SELECT ?F, ?F, ?F, ?F FROM ?T WHERE ?F = ?N', $this->parentKey, $this->leftKey, $this->rightKey, $this->levelKey, $this->tableName, $this->primaryKey, (int)$id);
-		}
-
-		return self::$cache[$this->tableName][$id];
+		return $this->Db->getRow('SELECT ?F, ?F, ?F, ?F FROM ?T WHERE ?F = ?N', $this->parentKey, $this->leftKey, $this->rightKey, $this->levelKey, $this->tableName, $this->primaryKey, (int)$id);
 	}
 
 }
