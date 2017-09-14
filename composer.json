@@ -15,5 +15,12 @@
         "psr-4": {
             "MarginTree\\": "src"
         }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "MarginTree\\Providers\\MarginTreeServiceProvider"
+            ]
+        }
     }
 }
