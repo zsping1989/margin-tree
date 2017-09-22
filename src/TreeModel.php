@@ -17,6 +17,8 @@ use Illuminate\Support\Facades\DB;
 use League\Flysystem\Exception;
 
 trait TreeModel{
+    //是树状结构
+    public static $isTreeModel = true;
 
     /**
      * 变量:边界数操作服务对象
