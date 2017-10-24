@@ -13,6 +13,7 @@ namespace MarginTree;
 use Illuminate\Support\Facades\DB;
 
 class DbMysqlImplModel  implements DbMysqlModel{
+    protected $connection=null;
     /**
      * DB connect
      *
@@ -20,9 +21,10 @@ class DbMysqlImplModel  implements DbMysqlModel{
      *
      * @return resource connection link
      */
-    public function connect()
+    public function connect($connection)
     {
         // TODO: Implement connect() method.
+        $this->connection = $connection;
     }
 
     /**
@@ -62,7 +64,7 @@ class DbMysqlImplModel  implements DbMysqlModel{
     public function query($sql,$args = array())
     {
         $all_sql = $this->buildSQL(func_get_args());
-        return DB::statement($all_sql);
+        return DB::connection($this->connection)->delete($all_sql);
     }
 
     /**
@@ -104,7 +106,7 @@ class DbMysqlImplModel  implements DbMysqlModel{
     public function update($sql, $args = array())
     {
         $all_sql = $this->buildSQL(func_get_args());
-        return DB::update($all_sql);
+        return DB::connection($this->connection)->update($all_sql);
     }
 
     /**
@@ -119,7 +121,7 @@ class DbMysqlImplModel  implements DbMysqlModel{
     public function getAll($sql,  $args = array())
     {
         $all_sql = $this->buildSQL(func_get_args());
-        return DB::select($all_sql);
+        return DB::connection($this->connection)->select($all_sql);
     }
 
     /**
@@ -147,11 +149,9 @@ class DbMysqlImplModel  implements DbMysqlModel{
      */
     public function getRow($sql, $args = array())
     {
-
-       $all_sql = $this->buildSQL(func_get_args()); //得到getRow方法被调用时传递过来的所有参数
-
-       $rows =  DB::select($all_sql);
-       return $rows ? (array) $rows[0] : [];
+        $all_sql = $this->buildSQL(func_get_args());
+        $rows =  DB::connection($this->connection)->select($all_sql);
+        return $rows ? (array) $rows[0] : [];
     }
 
     /**
@@ -193,7 +193,7 @@ class DbMysqlImplModel  implements DbMysqlModel{
     public function getOne($sql,  $args = array())
     {
         $all_sql = $this->buildSQL(func_get_args());
-        $rows =  DB::select($all_sql);
+        $rows =  DB::connection($this->connection)->select($all_sql);
         $row = $rows ? (array) $rows[0] : []; //得到第一行.
         return  array_shift($row);//将唯一的一个值弹出
     }

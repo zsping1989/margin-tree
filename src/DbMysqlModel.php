@@ -23,7 +23,7 @@ interface  DbMysqlModel {
 	 *
 	 * @return resource connection link
 	 */
-	public function connect();
+	public function connect($connection);
 
 	/**
 	 * Disconnect from DB

@@ -102,13 +102,14 @@ class NestedSetsService {
      * @param null $primary_key
      * @param null $level_key
      */
-    public function init($table,array $fields){
+    public function init($table,array $fields,$connection=''){
         $this->tableName = $table; //表名
         $this->primaryKey = $fields['primary_key'] ?: $this->primaryKey; //主键
         $this->leftKey = $fields['left_key'] ?: $this->leftKey; //左边界
         $this->rightKey = $fields['right_key'] ?: $this->rightKey; //右边界
         $this->parentKey = $fields['parent_key'] ?: $this->parentKey; //父节点
         $this->levelKey = $fields['level_key'] ?: $this->levelKey; //层级
+		$this->Db->connect($connection);
     }
 
 

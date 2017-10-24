@@ -55,7 +55,7 @@ trait TreeModel{
 
     public function treeInit(NestedSetsService $nestedSetsService){
         $this->treeField['primary_key'] = $this->getKeyName();
-        $nestedSetsService->init(env('DB_PREFIX').$this->getTable(), $this->treeField);
+        $nestedSetsService->init(config('database.connections.'.($this->getConnectionName()?:config('database.default')).'.prefix').$this->getTable(), $this->treeField,$this->getConnectionName()?:config('database.default'));
         $this->nestend = $nestedSetsService;
     }
 
